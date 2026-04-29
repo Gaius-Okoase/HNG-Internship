@@ -2,12 +2,13 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import morgan from 'morgan';
-import cookieParser from 'cookie-parser'
+import cookieParser from 'cookie-parser';
 import type { Response, Request } from 'express';
 import profileRoute from './routes/profileRoute.js';
-import authRoute from './routes/authRoute.js'
+import authRoute from './routes/authRoute.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { connectToDb } from './config/db.js';
+import { authLimit, profileLimit } from './middleware/rateLimiter.js';
 
 const app = express();
 
@@ -25,8 +26,8 @@ app.use(cookieParser());
 app.get('/', (_req: Request, res: Response) => {
   res.send("I'm up and ready.");
 });
-app.use('/api', profileRoute)
-app.use('/auth', authRoute);
+app.use('/api', profileLimit, profileRoute);
+app.use('/auth', authLimit, authRoute);
 
 app.use(errorHandler);
 

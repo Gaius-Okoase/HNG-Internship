@@ -1,6 +1,11 @@
-import { Router } from "express";
-import { processGitHubCallbackController, getGitHubAuthUrlController, refreshTokenController, logoutController } from "../controllers/authController.js";
-import { authenticate } from "../middleware/auth.js";
+import { Router } from 'express';
+import {
+  processGitHubCallbackController,
+  getGitHubAuthUrlController,
+  refreshTokenController,
+  logoutController,
+} from '../controllers/authController.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = Router();
 

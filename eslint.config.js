@@ -11,10 +11,13 @@ export default defineConfig(
     ignores: ['dist', 'node_modules', 'index.js'],
   },
   {
-  rules: {
-    '@typescript-eslint/no-unused-vars': ['error', { 
-      argsIgnorePattern: '^_' 
-    }]
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+        },
+      ],
+    },
   }
-}
 );
