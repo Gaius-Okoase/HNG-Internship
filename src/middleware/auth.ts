@@ -44,6 +44,8 @@ export const authenticate = async (req: Request, _res: Response, next: NextFunct
         if (!userExists) {
             throw new AppError(410, "User does not exist")
         }
+
+        if(userExists.is_active === false) throw new AppError(403, "Forbidden")
         req.user = user;    
     } catch (error) {
        next(error)
@@ -53,7 +55,7 @@ export const authenticate = async (req: Request, _res: Response, next: NextFunct
 
 export const authorizeAdmin = async (req: Request, _res: Response, next: NextFunction) => {
     try {
-        if (req.user.role !== "admin") throw new AppError(403, "Unauthorized")
+        if (req.user.role !== "admin") throw new AppError(403, "Forbidden")
     } catch (error) {
         next(error)
     }

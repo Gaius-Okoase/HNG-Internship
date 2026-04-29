@@ -7,6 +7,6 @@ const router = Router();
 router.get('/github', getGitHubAuthUrlController);
 router.get('/github/callback', processGitHubCallbackController);
 router.post('/refresh', refreshTokenController);
-router.get('/logout', authenticate, logoutController);
+router.post('/logout', authenticate, logoutController);
 
 export default router;
