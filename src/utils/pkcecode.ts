@@ -13,7 +13,7 @@ export const generateCodeChallenge = (code_verifier: string) => {
 }
 
 export const generateState = () => {
-    const state = randomBytes(16).toString('base64url')
+    const state: string = randomBytes(16).toString('base64url')
 
     return state;
 }

@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
-import type { CreatedProfile } from '../types.js';
-import type { QueryOptionsSchema } from '../types.js';
+import type { CreatedProfile } from '../types/types.js';
+import type { QueryOptionsSchema } from '../types/types.js';
 import {
   createProfileService,
   deleteProfileService,

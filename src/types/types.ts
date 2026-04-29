@@ -53,14 +53,22 @@ export interface IProfile {
   created_at: string;
 }
 
+export interface GitHubUser {
+  id: number
+  login: string,
+  email: string | null,
+  avatar_url: string
+}
+
 export interface IUser {
   id: string;
   github_id: string,
   username: string;
-  email: string;
+  email: string | null;
   avatar_url: string;
   role: 'admin' | 'analyst';
   is_active: boolean;
+  refresh_token: string,
   last_login_at: Date;
   created_at: Date;
 }
@@ -79,7 +87,13 @@ export interface QueryOptionsSchema {
   page?: number | undefined;
   limit?: number | undefined;
 }
+
 export interface Sort {
   field: string;
   order: 1 | -1;
+}
+
+export interface DecodedToken {
+  id: string,
+  role: "admin" | "analyst"
 }

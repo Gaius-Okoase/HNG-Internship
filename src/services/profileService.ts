@@ -1,12 +1,12 @@
 import axios from 'axios';
-import type { QueryOptionsSchema } from '../types.js';
+import type { QueryOptionsSchema } from '../types/types.js';
 import type {
   GenderizeRes,
   AgifyRes,
   NationalizeRes,
   IProfile,
   Sort,
-} from '../types.js';
+} from '../types/types.js';
 import { v7 as uuidv7 } from 'uuid';
 import { AppError } from '../utils/AppError.js';
 import { Profile } from '../models/Profile.js';

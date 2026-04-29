@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import type { IUser } from "../types.js";
+import type { IUser } from "../types/types.js";
 import { v7 as uuidv7 } from "uuid";
 
 const userSchema = new mongoose.Schema<IUser, mongoose.Model<IUser>>({
@@ -33,6 +33,9 @@ const userSchema = new mongoose.Schema<IUser, mongoose.Model<IUser>>({
         type: Boolean,
         default: true,
         required: true
+    },
+    refresh_token: {
+        type: String,
     },
     last_login_at: {
         type: Date,

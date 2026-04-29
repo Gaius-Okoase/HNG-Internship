@@ -1,7 +1,12 @@
-//import mongoose from 'mongoose';
 import axios from 'axios';
+import jwt from 'jsonwebtoken';
+import { v7 as uuidv7 } from "uuid";
+import { User } from '../models/User.js';
 import { generateState } from '../utils/PKCEcode.js';
 import { AppError } from '../utils/AppError.js';
+import type { GitHubUser, DecodedToken } from '../types/types.js';
+import { generateAccessToken, generateRefreshToken } from '../utils/generateToken.js';
+
 
 
 // Create a store Map to keep state and code_challenge value
@@ -24,7 +29,7 @@ export const getGitHubAuthUrlService = (code_challenge?: string) => {
     return {gitHubUri};
 }
 
-export const getProfileFromGitHubService = async (code: string, state: string, code_verifier?: string) => {
+export const processGitHubCallbackService = async (code: string, state: string, code_verifier?: string) => {
     // Check if state is same as when initiated to prevent CSRF
     const entry = store.get(state);
     console.log(entry)
@@ -74,7 +79,118 @@ export const getProfileFromGitHubService = async (code: string, state: string, c
     const userGitHubProfile = await axios.get('https://api.github.com/user', {
         headers: {Authorization: `Bearer ${accessToken}`}
     });
-    const user = userGitHubProfile.data;
+    const userData: GitHubUser = userGitHubProfile.data;
 
-    return user;
+    // Retrieve neede data to create user profile
+    const github_id = userData.id.toString();
+    const username = userData.login;
+    const email = userData.email;
+    const avatar_url = userData.avatar_url
+
+    // Check if user already exists 
+    const user = await User.findOne({github_id})
+    if (user) {
+        const id = user.id as string;
+        const role = user.role as "admin" | "analyst";
+        const refresh_token = generateRefreshToken(id, role);
+        const access_token = generateAccessToken(id, role)
+
+        user.refresh_token = refresh_token;
+        user.last_login_at = new Date();
+        user.is_active = true;
+
+        await user.save()
+
+        return {
+            status: "success",
+            data: {
+                access_token,
+                refresh_token
+            }
+        }
+    } else {
+        const id = uuidv7();
+        const role = "analyst";
+        const is_active = true;
+        const refresh_token = generateRefreshToken(id, role);
+        const access_token = generateAccessToken(id, role);
+        const last_login_at = new Date();
+        const created_at = new Date();
+
+        const newUser = await User.create({
+            id,
+            github_id,
+            username,
+            email,
+            avatar_url,
+            role,
+            is_active,
+            refresh_token,
+            last_login_at,
+            created_at
+        })
+
+        await newUser.save();
+        
+        return {
+            status: "success",
+            data: {
+                user: newUser,
+                access_token,
+                refresh_token
+            }
+        }
+    }
+}
+
+export const refreshTokenService = async (refresh_token: string) => {
+    try {
+        // Check if token is valid
+        const decodedToken = jwt.verify(refresh_token, process.env.JWT_REFRESH_SECRET!) as DecodedToken;
+        
+         // Extract user Id from token payload
+         const id = decodedToken.id;
+         const role = decodedToken.role;
+
+        // Check if token still exists in DB
+        const user = await User.findOne({refresh_token})
+
+        // Generate new token if token still exists and update DB
+        if (user) {
+            const newAccessToken = generateAccessToken(id, role);
+            const newRefreshToken = generateRefreshToken(id, role);
+
+            await User.findOneAndUpdate(
+                {id},
+                {refresh_token: newRefreshToken}
+            );
+
+            // Return access token and refresh token
+            return {
+                status: "success",
+                access_Token: newAccessToken,
+                refresh_token: newRefreshToken
+            }
+        } else{
+            // Find user by id and wipe out the refresh token — force re-login
+            await User.findByIdAndUpdate(id, {refresh_token: null, is_active: false});
+       
+            // Throw expired token error.
+            throw new AppError (401, "Token expired. Please log in again.")
+        }
+    } catch (error) {
+        if (error instanceof AppError) {
+            throw error
+        } else {
+            throw new AppError (401, "Invalid or Missing token")
+        }
+    }
+}
+
+export const logoutService = async (id: string) => {
+    const user = await User.findOneAndUpdate({id: id}, {refresh_token: null, is_active: false}, {returnDocument: 'after'});
+
+    if(!user) throw new AppError(401, "User does not exist")
+    
+    return { status: "success" }
 }

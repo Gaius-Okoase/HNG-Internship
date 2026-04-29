@@ -1,9 +1,12 @@
 import { Router } from "express";
-import { getProfileFromGitHubController, getGitHubAuthUrlController } from "../controllers/authController.js";
+import { processGitHubCallbackController, getGitHubAuthUrlController, refreshTokenController, logoutController } from "../controllers/authController.js";
+import { authenticate } from "../middleware/auth.js";
 
 const router = Router();
 
 router.get('/github', getGitHubAuthUrlController);
-router.get('/github/callback', getProfileFromGitHubController);
+router.get('/github/callback', processGitHubCallbackController);
+router.post('/refresh', refreshTokenController);
+router.get('/logout', authenticate, logoutController);
 
 export default router;

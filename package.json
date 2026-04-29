@@ -21,9 +21,11 @@
   "dependencies": {
     "@eslint/js": "^10.0.1",
     "axios": "^1.15.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.4.1",
     "morgan": "^1.10.1",
     "typescript": "^6.0.2",
@@ -32,9 +34,11 @@
   },
   "devDependencies": {
     "@types/axios": "^0.9.36",
+    "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/dotenv": "^6.1.1",
     "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/mongoose": "^5.11.96",
     "@types/morgan": "^1.9.10",
     "@types/typescript": "^0.4.29",
