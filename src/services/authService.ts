@@ -60,7 +60,7 @@ export const processGitHubCallbackService = async (
           client_id: clientId,
           code_verifier,
           code,
-          cliRedirectUri,
+          redirect_uri: cliRedirectUri,
         },
         {
           headers: {
@@ -148,7 +148,7 @@ export const processGitHubCallbackService = async (
       created_at,
     });
 
-    const user = await User.find({github_id}).select('-_id -__v -refresh_token')
+    const user = await User.findOne({github_id}).select('-_id -__v -refresh_token')
     
     return {
       status: 'success',
