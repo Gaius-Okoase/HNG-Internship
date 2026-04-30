@@ -15,7 +15,7 @@ const store = new Map<string, { code_challenge?: string | undefined }>();
 
 export const getGitHubAuthUrlService = (code_challenge?: string) => {
   const redirectUri = process.env.REDIRECT_URI;
-  const cliRedirectUri = process.env.CLI_REDIRECT_URI;
+  const cliRedirectUri = process.env.REDIRECT_CLI_URI;
   const clientId = process.env.CLIENT_ID;
   // Declare needed variable for this service.
   const scope = `read:user`;
