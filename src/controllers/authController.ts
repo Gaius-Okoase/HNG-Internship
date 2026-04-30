@@ -3,7 +3,7 @@ import {
   getGitHubAuthUrlService,
   processGitHubCallbackService,
   refreshTokenService,
-  logoutService,
+  logoutService
 } from '../services/authService.js';
 
 export const getGitHubAuthUrlController = (
@@ -32,8 +32,6 @@ export const processGitHubCallbackController = async (
 
     const result = await processGitHubCallbackService(code, state);
     const refresh_token = result.data!.refresh_token;
-    const user = result.data!.user;
-    const access_token = result.data!.access_token;
 
     res
       .cookie('refresh_token', refresh_token, {
@@ -43,13 +41,7 @@ export const processGitHubCallbackController = async (
         expires: new Date(Date.now() + 3 * 60 * 1000),
       })
       .status(200)
-      .json({
-        status: 'success',
-        data: {
-          user,
-          access_token,
-        },
-      });
+      .json(result);
   } catch (error) {
     next(error);
   }

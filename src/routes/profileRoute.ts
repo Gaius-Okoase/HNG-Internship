@@ -2,6 +2,8 @@ import express from 'express';
 import {
   createProfileController,
   deleteProfileController,
+  exportProfileController,
+  //getProfileController,
   getAllProfileController,
   getProfilesByNaturalQuerySearchController,
 } from '../controllers/profileController.js';
@@ -31,5 +33,6 @@ router.get(
   authenticate,
   getProfilesByNaturalQuerySearchController
 );
+router.get('/profiles/export', validateQuery, authenticate, exportProfileController);
 
 export default router;

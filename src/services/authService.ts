@@ -2,7 +2,7 @@ import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import { v7 as uuidv7 } from 'uuid';
 import { User } from '../models/User.js';
-import { generateState } from '../utils/PKCEcode.js';
+import { generateState } from '../utils/pkcecode.js'
 import { AppError } from '../utils/AppError.js';
 import type { GitHubUser, DecodedToken } from '../types/types.js';
 import {
@@ -97,12 +97,10 @@ export const processGitHubCallbackService = async (
 
   // Retrieve neede data to create user profile
   const github_id = userData.id.toString();
-  const username = userData.login;
-  const email = userData.email;
-  const avatar_url = userData.avatar_url;
 
   // Check if user already exists
-  const user = await User.findOne({ github_id });
+  const user = await User.findOne({ github_id });  
+
   if (user) {
     const id = user.id as string;
     const role = user.role as 'admin' | 'analyst';
@@ -115,14 +113,20 @@ export const processGitHubCallbackService = async (
 
     await user.save();
 
+    const userWithoutRefresh = await User.findOne({ github_id }).select('-_id -__v -refresh_token');
+
     return {
       status: 'success',
       data: {
+        user: userWithoutRefresh,
         access_token,
         refresh_token,
       },
     };
   } else {
+    const username = userData.login;
+    const email = userData.email;
+    const avatar_url = userData.avatar_url;
     const id = uuidv7();
     const role = 'analyst';
     const is_active = true;
@@ -131,7 +135,7 @@ export const processGitHubCallbackService = async (
     const last_login_at = new Date();
     const created_at = new Date();
 
-    const newUser = await User.create({
+    await User.create({
       id,
       github_id,
       username,
@@ -144,12 +148,12 @@ export const processGitHubCallbackService = async (
       created_at,
     });
 
-    await newUser.save();
-
+    const user = await User.find({github_id}).select('-_id -__v -refresh_token')
+    
     return {
       status: 'success',
       data: {
-        user: newUser,
+        user,
         access_token,
         refresh_token,
       },
@@ -182,7 +186,7 @@ export const refreshTokenService = async (refresh_token: string) => {
       // Return access token and refresh token
       return {
         status: 'success',
-        access_Token: newAccessToken,
+        access_token: newAccessToken,
         refresh_token: newRefreshToken,
       };
     } else {

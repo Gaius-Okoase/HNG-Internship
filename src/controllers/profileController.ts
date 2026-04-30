@@ -4,6 +4,7 @@ import type { QueryOptionsSchema } from '../types/types.js';
 import {
   createProfileService,
   deleteProfileService,
+  exportProfilesService,
   getAllProfileService,
   getProfilesByNaturalQuerySearchService,
   getProfileService,
@@ -88,3 +89,13 @@ export const getProfilesByNaturalQuerySearchController = async (
     next(error);
   }
 };
+
+export const exportProfileController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const query: QueryOptionsSchema = req.query;
+
+    await exportProfilesService(query, res)
+  } catch (error) {
+    next(error)
+  }
+}

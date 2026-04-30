@@ -47,7 +47,6 @@ export const authenticate = async (
 
     // Verify user still exists
     const userExists = await User.findOne({ id: user.id });
-    console.log(userExists);
     if (!userExists) {
       throw new AppError(410, 'User does not exist');
     }

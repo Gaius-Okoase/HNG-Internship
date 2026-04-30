@@ -12,10 +12,10 @@ export interface CreatedProfile {
     name: string;
     gender: string;
     gender_probability: number;
-    sample_size: number;
     age: number;
     age_group: 'child' | 'teenager' | 'adult' | 'senior';
     country_id: string;
+    country_name: string;
     country_probability: number;
     created_at: string;
   };
@@ -44,7 +44,6 @@ export interface IProfile {
   name: string;
   gender: string;
   gender_probability: number;
-  sample_size: number;
   age: number;
   age_group: 'child' | 'teenager' | 'adult' | 'senior';
   country_id: string;
@@ -74,6 +73,7 @@ export interface IUser {
 }
 
 export interface QueryOptionsSchema {
+  format?: 'csv' | undefined;
   q?: string | undefined;
   gender?: string | undefined;
   age_group?: string | undefined;
