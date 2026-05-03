@@ -11,22 +11,20 @@ import {
 } from '../utils/generateToken.js';
 
 // Create a store Map to keep state and code_challenge value
-const store = new Map<string, { code_challenge?: string | undefined }>();
+const store = new Map<string, { code_challenge?: string | undefined}>();
 
 export const getGitHubAuthUrlService = (code_challenge?: string) => {
-  const redirectUri = process.env.REDIRECT_URI;
-  const cliRedirectUri = process.env.REDIRECT_CLI_URI;
-  const clientId = process.env.CLIENT_ID;
+  const clientId = code_challenge ? process.env.CLI_CLIENT_ID : process.env.CLIENT_ID;  
+  const redirectUri = code_challenge ? process.env.REDIRECT_CLI_URI : process.env.REDIRECT_URI;
   // Declare needed variable for this service.
   const scope = `read:user`;
   // Create random state key and store in map
   const state = generateState();
   store.set(state, { code_challenge });
   // get GitHub Auth Uri based on interface
-  const gitHubWebPortalUri = `https://github.com/login/oauth/authorize?client_id=${clientId}&state=${state}&redirect_uri=${redirectUri}&scope=${scope}`;
-  const gitHubCliUri = `https://github.com/login/oauth/authorize?client_id=${clientId}&state=${state}&redirect_uri=${cliRedirectUri}&scope=${scope}&code_challenge=${code_challenge}&code_challenge_method=S256`;
-  const gitHubUri =
-    code_challenge !== undefined ? gitHubCliUri : gitHubWebPortalUri;
+  const gitHubUri = code_challenge 
+  ? `https://github.com/login/oauth/authorize?client_id=${clientId}&state=${state}&redirect_uri=${redirectUri}&scope=${scope}&code_challenge=${code_challenge}&code_challenge_method=S256` 
+  : `https://github.com/login/oauth/authorize?client_id=${clientId}&state=${state}&redirect_uri=${redirectUri}&scope=${scope}`;
 
   return { gitHubUri };
 };
@@ -38,57 +36,34 @@ export const processGitHubCallbackService = async (
 ) => {
   // Check if state is same as when initiated to prevent CSRF
   const entry = store.get(state);
-  console.log(entry);
   if (entry == undefined) throw new AppError(401, 'Unauthorized');
-  store.delete(state);
+  
+  // Determine if it's CLI interface by checking if code_challenge exists
+  const isCliFlow = !!entry.code_challenge
 
   // Declare variables needed for this service
-  const clientSecret = process.env.CLIENT_SECRET;
-  const redirectUri = process.env.REDIRECT_URI;
-  const cliRedirectUri = process.env.CLI_REDIRECT_URI;
-  const clientId = process.env.CLIENT_ID;
+  const clientSecret = isCliFlow ? process.env.CLI_CLIENT_SECRET : process.env.CLIENT_SECRET;
+  const redirectUri = isCliFlow ? process.env.REDIRECT_CLI_URI : process.env.REDIRECT_URI;
+  const clientId = isCliFlow ? process.env.CLI_CLIENT_ID : process.env.CLIENT_ID;
+
+  // Payload to be posted to github token endpoint
+  const tokenPayload = isCliFlow 
+  ? {client_id: clientId, code_verifier, code, redirect_uri: redirectUri, client_secret: clientSecret} 
+  : {client_id: clientId, code, client_secret: clientSecret, redirect_uri: redirectUri}
 
   // Get access token from GitHub
-  const tokenResponse = entry.code_challenge
-    ? await axios.post<{
+  const tokenResponse = await axios.post<{
         access_token: string;
         scope: string;
         token_type: string;
       }>(
         'https://github.com/login/oauth/access_token',
-        {
-          client_id: clientId,
-          code_verifier,
-          code,
-          redirect_uri: cliRedirectUri,
-        },
-        {
-          headers: {
-            Accept: 'application/json',
-          },
-        }
+        tokenPayload,
+        { headers: { Accept: 'application/json' } }
       )
-    : await axios.post<{
-        access_token: string;
-        scope: string;
-        token_type: string;
-      }>(
-        'https://github.com/login/oauth/access_token',
-        {
-          client_id: clientId,
-          client_secret: clientSecret,
-          code,
-          redirectUri,
-        },
-        {
-          headers: {
-            Accept: 'application/json',
-          },
-        }
-      );
 
   const accessToken = tokenResponse.data.access_token;
-
+  
   // Get user GitHub profile with access token from GitHub
   const userGitHubProfile = await axios.get('https://api.github.com/user', {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -99,65 +74,57 @@ export const processGitHubCallbackService = async (
   const github_id = userData.id.toString();
 
   // Check if user already exists
-  const user = await User.findOne({ github_id });  
+  const userExists = await User.findOne({ github_id }); 
+  
+  // Declare variables to be returned for new users and existing users alike
+  let refresh_token: string;
+  let access_token: string;
+  let userWithoutRefresh;
 
-  if (user) {
-    const id = user.id as string;
-    const role = user.role as 'admin' | 'analyst';
-    const refresh_token = generateRefreshToken(id, role);
-    const access_token = generateAccessToken(id, role);
+  if (userExists) {
+    const id = userExists.id as string;
+    const role = userExists.role as 'admin' | 'analyst';
+    refresh_token = generateRefreshToken(id, role);
+    access_token = generateAccessToken(id, role);
 
-    user.refresh_token = refresh_token;
-    user.last_login_at = new Date();
-    user.is_active = true;
+    userExists.refresh_token = refresh_token;
+    userExists.last_login_at = new Date();
+    userExists.is_active = true;
 
-    await user.save();
+    await userExists.save();
 
-    const userWithoutRefresh = await User.findOne({ github_id }).select('-_id -__v -refresh_token');
-
-    return {
-      status: 'success',
-      data: {
-        user: userWithoutRefresh,
-        access_token,
-        refresh_token,
-      },
-    };
+    userWithoutRefresh = await User.findOne({ github_id }).select('-_id -__v -refresh_token');
   } else {
-    const username = userData.login;
-    const email = userData.email;
-    const avatar_url = userData.avatar_url;
     const id = uuidv7();
     const role = 'analyst';
-    const is_active = true;
-    const refresh_token = generateRefreshToken(id, role);
-    const access_token = generateAccessToken(id, role);
-    const last_login_at = new Date();
-    const created_at = new Date();
+    refresh_token = generateRefreshToken(id, role);
+    access_token = generateAccessToken(id, role);
 
     await User.create({
       id,
       github_id,
-      username,
-      email,
-      avatar_url,
+      username: userData.login,
+      email: userData.email,
+      avatar_url: userData.avatar_url,
       role,
-      is_active,
+      is_active: true,
       refresh_token,
-      last_login_at,
-      created_at,
+      last_login_at: new Date(),
+      created_at: new Date(),
     });
 
-    const user = await User.findOne({github_id}).select('-_id -__v -refresh_token')
-    
-    return {
-      status: 'success',
-      data: {
-        user,
-        access_token,
-        refresh_token,
-      },
-    };
+    userWithoutRefresh = await User.findOne({github_id}).select('-_id -__v -refresh_token')
+  }
+
+  store.delete(state);
+
+  return {
+    status: 'success',
+    data: {
+      user: userWithoutRefresh,
+      access_token,
+      refresh_token
+    }
   }
 };
 

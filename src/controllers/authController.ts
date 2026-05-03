@@ -7,13 +7,13 @@ import {
 } from '../services/authService.js';
 
 export const getGitHubAuthUrlController = (
-  _req: Request,
+  req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const { gitHubUri } = getGitHubAuthUrlService();
-    console.log(gitHubUri);
+    const { code_challenge } = req.query as { code_challenge ?: string};
+    const { gitHubUri } = getGitHubAuthUrlService(code_challenge);
 
     return res.redirect(gitHubUri);
   } catch (error) {
@@ -21,31 +21,45 @@ export const getGitHubAuthUrlController = (
   }
 };
 
-export const processGitHubCallbackController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const processGitHubCallbackController = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const code = req.query.code as string;
-    const state = req.query.state as string;
-
+    const { code, state } = req.query as { code: string; state: string };
     const result = await processGitHubCallbackService(code, state);
-    const refresh_token = result.data!.refresh_token;
 
-    res
-      .cookie('refresh_token', refresh_token, {
-        httpOnly: true,
-        sameSite: 'strict',
-        secure: true,
-        expires: new Date(Date.now() + 3 * 60 * 1000),
-      })
-      .status(200)
-      .json(result);
+    res.cookie('refresh_token', result.data.refresh_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 5 * 60 * 1000,
+    });
+
+    res.status(200).json({
+      status: result.status,
+      data: {
+        user: result.data.user,
+        access_token: result.data.access_token
+      }
+    });
   } catch (error) {
     next(error);
   }
 };
+
+export const processCliCallbackController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { code, state, code_verifier } = req.body as { code: string, state: string, code_verifier: string};
+
+    const result = await processGitHubCallbackService(code, state, code_verifier);
+
+    res.status(200).json({
+      access_token: result.data.access_token,
+      refresh_token: result.data.refresh_token,
+      username: result.data.user?.username
+    })
+  } catch (error) {
+    next(error)
+  }
+}
 
 export const refreshTokenController = async (
   req: Request,
@@ -63,7 +77,7 @@ export const refreshTokenController = async (
       .cookie('refresh_token', refresh_token, {
         httpOnly: true,
         sameSite: 'strict',
-        secure: true,
+        secure: process.env.NODE_ENV === 'production',
         expires: new Date(Date.now() + 5 * 60 * 1000),
       })
       .status(200)
@@ -80,7 +94,7 @@ export const logoutController = async (
 ) => {
   try {
     const id = req.user.id;
-    console.log(id);
+    
     const logout = await logoutService(id);
 
     res.status(200).clearCookie('refresh_token').send(logout);
